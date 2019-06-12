@@ -3,6 +3,12 @@ package com.coupa.sand;
 import java.util.ArrayList;
 import java.util.Map;
 
+/**
+ *  This class creates a response that a Service returns
+ *  when checking if a request has access.
+ *
+ * @author Mattias Kjetselberg
+ */
 public class AllowedResponse {
     private static final String RESPONSE_FIELD_ALLOWED = "allowed";
     private static final String RESPONSE_FIELD_SUB = "sub";

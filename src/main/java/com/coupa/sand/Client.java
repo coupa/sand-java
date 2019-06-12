@@ -19,6 +19,12 @@ import java.net.URISyntaxException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
+/**
+ *  This class creates a Client for authentication with a SAND server,
+ *  to make API calls to a Service.
+ *
+ * @author Mattias Kjetselberg
+ */
 public class Client {
     private static final Logger LOGGER = LoggerFactory.getLogger(Client.class);
     private static final String DEFAULT_CACHE_ROOT = "sand";
@@ -160,8 +166,6 @@ public class Client {
                     Thread.sleep(1_000L * secondsSleep);
                 } catch (InterruptedException e) {
                     LOGGER.error("Sleep before retrying SAND authentication was interrupted.", e);
-
-                    return null;
                 }
             }
 
@@ -241,8 +245,6 @@ public class Client {
                     Thread.sleep(1_000L * secondsSleep);
                 } catch (InterruptedException e) {
                     LOGGER.error("Sleep before retrying SAND authentication was interrupted.", e);
-
-                    return null;
                 }
             }
 

@@ -26,6 +26,12 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+/**
+ *  This class creates a Service for checking if a request has access,
+ *  by verifying the token with the SAND server.
+ *
+ * @author Mattias Kjetselberg
+ */
 public class Service extends Client {
     private static final Logger LOGGER = LoggerFactory.getLogger(Service.class);
     private static final String DEFAULT_TOKEN_VERIFY_PATH = "/warden/token/allowed";
@@ -62,7 +68,7 @@ public class Service extends Client {
      * tokenPath = "/oauth2/token"
      * tokenVerifyPath = "/warden/token/allowed"
      * scopes = {"hydra"}
-     * checeType = "tokens"
+     * cacheType = "tokens"
      *
      * @param clientId The ID of the Client that's registered in the SAND server.
      * @param secret The Secret of the Client that's registred in the SAND server.
@@ -76,7 +82,7 @@ public class Service extends Client {
     /**
      * Constructor that will set default values for
      * scopes = {"hydra"}
-     * checeType = "tokens"
+     * cacheType = "tokens"
      *
      * @param clientId The ID of the Client that's registered in the SAND server.
      * @param secret The Secret of the Client that's registred in the SAND server.
@@ -91,7 +97,7 @@ public class Service extends Client {
 
     /**
      * Constructor that will set default value for
-     * checeType = "tokens"
+     * cacheType = "tokens"
      *
      * @param clientId The ID of the Client that's registered in the SAND server.
      * @param secret The Secret of the Client that's registred in the SAND server.
