@@ -160,7 +160,7 @@ public class Client {
                 }
 
                 removeCachedToken(cachingKey);
-                long secondsSleep = (long)Math.pow(2.0, requestRetry);
+                long secondsSleep = (long)Math.pow(2, requestRetry);
 
                 try {
                     Thread.sleep(1_000L * secondsSleep);
@@ -239,7 +239,7 @@ public class Client {
                     return null;
                 }
 
-                long secondsSleep = (long) Math.pow(2.0, requestRetry);
+                long secondsSleep = (long) Math.pow(2, requestRetry);
 
                 try {
                     Thread.sleep(1_000L * secondsSleep);

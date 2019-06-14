@@ -5,6 +5,7 @@ import com.google.common.cache.CacheBuilder;
 import com.google.gson.Gson;
 import net.minidev.json.JSONObject;
 import org.apache.http.*;
+import org.apache.http.auth.AuthenticationException;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
@@ -13,14 +14,10 @@ import org.apache.http.impl.client.HttpClients;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.naming.AuthenticationException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.time.Clock;
 import java.time.OffsetDateTime;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -120,7 +117,7 @@ public class Service extends Client {
      * with targetScopes and action, and adding the default retry count.
      *
      * Example to verify a Client's request:
-     * Service service = new Service(clientId, secret, resource);
+     * Service service = new Service(clientId, secret, tokenSite, resource);
      * String[] targetScopes = {"coupa"};
      * String action = "";
      *
@@ -260,7 +257,7 @@ public class Service extends Client {
         String accessToken = getAccessToken(options.getNumRetries());
 
         if (accessToken == null || accessToken.isEmpty()) {
-            return null;
+            throw new AuthenticationException("Could not get a service access token");
         }
 
         HttpPost httpPost = createTokenVerificationRequest(token, options, accessToken);

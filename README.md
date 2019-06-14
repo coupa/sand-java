@@ -78,7 +78,7 @@ A service that receives a request with the OAuth2 bearer token can use Service t
     * numRetries can be omitted to use the default retry count.
     *
     * Example to verify a Client's request:
-    * Service service = new Service(clientId, secret, resource);
+    * Service service = new Service(clientId, secret, tokenSite, resource);
     * String[] targetScopes = {"coupa"};
     * String action = "";
     *
