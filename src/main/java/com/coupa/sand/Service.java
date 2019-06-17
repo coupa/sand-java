@@ -198,6 +198,7 @@ public class Service extends Client {
 
     /**
      * Extracts a token from an apache.org.http request, by checking the Authoriation header.
+     * Header value must be of format "Bearer #{token}"
      *
      * @param request The request to fetch the token from.
      *
@@ -206,7 +207,15 @@ public class Service extends Client {
     private String extractToken(HttpRequest request) {
         Header authHeader = request.getFirstHeader(HttpHeaders.AUTHORIZATION);
 
-        return authHeader == null ? null : authHeader.getValue();
+        if (authHeader != null) {
+            String[] headerValues = authHeader.getValue().split(" ");
+
+            if ("bearer".equalsIgnoreCase(headerValues[0])) {
+                return headerValues[1];
+            }
+        }
+
+        return null;
     }
 
     /**
