@@ -101,7 +101,6 @@ public class Client {
      *                        public static HttpResponse requestWithToken(String token) {
      *                          //  Create a request to a Service
      *                          //  with "Bearer #{token}" in the Authorization header
-     *                          //  and set "X-COUPA-API-AUTH" header to "SAND"
      *                          //  execute the request and return the response.
      *
      *                          return HttpResponse;
@@ -128,7 +127,6 @@ public class Client {
      *                        public static HttpResponse requestWithToken(String token) {
      *                          //  Create a request to a Service
      *                          //  with "Bearer #{token}" in the Authorization header
-     *                          //  and set "X-COUPA-API-AUTH" header to "SAND"
      *                          //  execute the request and return the response.
      *
      *                          return HttpResponse;

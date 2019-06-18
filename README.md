@@ -39,7 +39,6 @@ A client that intends to communicate with a service can use Client to send the r
      *                        public static HttpResponse requestWithToken(String token) {
      *                          //  Create a request to a Service
      *                          //  with "Bearer #{token}" in the Authorization header
-     *                          //  and set "X-COUPA-API-AUTH" header to "SAND"
      *                          //  execute the request and return the response.
      *
      *                          return HttpResponse;
@@ -79,7 +78,7 @@ A service that receives a request with the OAuth2 bearer token can use Service t
     *
     * Example to verify a Client's request:
     * Service service = new Service(clientId, secret, tokenSite, resource);
-    * String[] targetScopes = {"coupa"};
+    * String[] targetScopes = {"xxxxx"};
     * String action = "";
     *
     * try {

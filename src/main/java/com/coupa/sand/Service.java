@@ -118,7 +118,7 @@ public class Service extends Client {
      *
      * Example to verify a Client's request:
      * Service service = new Service(clientId, secret, tokenSite, resource);
-     * String[] targetScopes = {"coupa"};
+     * String[] targetScopes = {"xxxxx"};
      * String action = "";
      *
      * try {
