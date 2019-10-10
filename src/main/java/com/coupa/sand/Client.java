@@ -303,12 +303,9 @@ public class Client {
             return item;
         }
 
-        JSONObject json = tokenRequest(scopes, retries);
-        if (json != null) {
-            item = new TokenResponse(json);
+        item = tokenRequest(scopes, retries);
+        if (item != null) {
             cacheToken(cachingKey, item);
-        } else {
-            item = null;
         }
         return item;
     }
@@ -319,9 +316,9 @@ public class Client {
      * @param scopes The scopes to fetch a token for.
      * @param retries Number of retries to fetch a token.
      *
-     * @return JSONObject with token information.
+     * @return TokenResponse with token information.
      */
-    private JSONObject tokenRequest(String[] scopes, int retries) {
+    public TokenResponse tokenRequest(String[] scopes, int retries) {
         TokenRequest tokenRequest = createTokenRequest(scopes);
 
         if (tokenRequest == null) {
@@ -358,7 +355,11 @@ public class Client {
 
             if (statusCode == HttpStatus.SC_OK) {
                 try {
-                    return tokenHTTPResp.getContentAsJSONObject();
+                    JSONObject json = tokenHTTPResp.getContentAsJSONObject();
+                    if (json != null) {
+                        return new TokenResponse(json);
+                    }
+                    return null;
                 } catch (ParseException e) {
                     LOGGER.error("Could not parse the oauth token response", e);
                 }
