@@ -24,7 +24,7 @@ public class VerificationOptions {
             String resource,
             int numRetries) {
 
-        if (Util.isEmpty(resource)) {
+        if (Util.hasEmpty(resource)) {
             throw new IllegalArgumentException("This Service has no configured resource");
         }
 
