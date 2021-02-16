@@ -1,5 +1,6 @@
 package com.coupa.sand;
 
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Map;
 
@@ -26,7 +27,7 @@ public class AllowedResponse {
     private String iAud = null;
     private String iIat = null;
     private String iExp = null;
-    private String iExt = null;
+    private Map<String, Object> iExt = null;
 
     /**
      * Constructor that will just set if the response is allowed or not
@@ -74,7 +75,7 @@ public class AllowedResponse {
             iAud = (String)mapResponse.get(RESPONSE_FIELD_AUD);
             iIat = (String)mapResponse.get(RESPONSE_FIELD_IAT);
             iExp = (String)mapResponse.get(RESPONSE_FIELD_EXP);
-            iExt = (String)mapResponse.get(RESPONSE_FIELD_EXT);
+            iExt = (Map<String, Object>)mapResponse.get(RESPONSE_FIELD_EXT);
         }
         else {
             iAllowed = false;
@@ -137,11 +138,31 @@ public class AllowedResponse {
         iExp = exp;
     }
 
-    public String getExt() {
+    public Map<String, Object> getExt() {
         return iExt;
     }
 
-    public void setExt(String ext) {
+    public void setExt(Map<String, Object> ext) {
         iExt = ext;
+    }
+
+    /**
+     * Checks if the response expiry time has passsed.
+     * If the response doesn't have an expiry time, it's considered not expired.
+     *
+     * @return boolean if the response has expired.
+     */
+    public boolean isExpired() {
+        String expires = getExp();
+  
+        if (expires != null) {
+            OffsetDateTime timeExpires = OffsetDateTime.parse(expires);
+            OffsetDateTime timeNow = OffsetDateTime.now(timeExpires.getOffset());
+  
+            return timeNow.isAfter(timeExpires);
+        }
+  
+        //Denied token's response will not expire and will get cleaned up by cache's default expiry time.
+        return false;
     }
 }

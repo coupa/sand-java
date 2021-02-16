@@ -17,7 +17,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.time.OffsetDateTime;
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -43,6 +42,9 @@ public class Service extends Client {
     private static final String TOKEN_VERIFICATION_FIELD_ACTION = "action";
     private static final String TOKEN_VERIFICATION_FIELD_CONTEXT = "context";
 
+    private static final int SERVICE_CACHE_DEFAULT_MAX_SIZE = 100000;
+    private static final long SERVICE_CACHE_DEFAULT_EXPIRY_IN_SECS = 3599L;
+
     String iResource = null;
     Map<String, Object> iContext = DEFAULT_CONTEXT;
     String iTokenVerifyPath = DEFAULT_TOKEN_VERIFY_PATH;
@@ -52,13 +54,34 @@ public class Service extends Client {
      * Cache to avoid repeated calls to SAND server.
      * Tokens responses are cached for 1 hour.
      */
-    private static final Cache<String, AllowedResponse> cTokenResponseCache =
+    private static Cache<String, AllowedResponse> cTokenResponseCache =
             CacheBuilder
                     .newBuilder()
                     .concurrencyLevel(4)
-                    .maximumSize(1000)
-                    .expireAfterWrite(1L, TimeUnit.HOURS)
+                    .maximumSize(SERVICE_CACHE_DEFAULT_MAX_SIZE)
+                    .expireAfterWrite(SERVICE_CACHE_DEFAULT_EXPIRY_IN_SECS, TimeUnit.SECONDS)
                     .build();
+
+    /**
+     * This rebuilds the service cache of token responses with the specified expiry time and max size.
+     * Use this method early at the beginning of your app to set custom expiry time and max size for the cache.
+     * @param secs Cache expiry time in seconds. Default is 3599.
+     * @param maxSize Maximum size of the cache. Default is 100000.
+     */
+    public static void buildServiceCacheWithExpiryAndSize(long secs, int maxSize) {
+        if (maxSize < 1) {
+            maxSize = SERVICE_CACHE_DEFAULT_MAX_SIZE;
+        }
+        if (secs < 1) {
+            secs = SERVICE_CACHE_DEFAULT_EXPIRY_IN_SECS;
+        }
+        cTokenResponseCache = CacheBuilder
+            .newBuilder()
+            .concurrencyLevel(4)
+            .maximumSize(maxSize)
+            .expireAfterWrite(secs, TimeUnit.SECONDS)
+            .build();
+    }
 
     /**
      * Constructor that will set default values for
@@ -242,7 +265,22 @@ public class Service extends Client {
             return  cachedAllowedResponse;
         }
 
-        AllowedResponse verifyTokenResponse = verifyToken(token, options);
+        AllowedResponse verifyTokenResponse = null;
+        try {
+            verifyTokenResponse = verifyToken(token, options);
+        } catch (ServiceUnauthorizedException e) {
+            LOGGER.error("Unauthorized to access token verification endpoint. Trying again");
+            //Service received 401 when accessing the token verification endpoint, meaning the service token may
+            //be invalid. So clear the service token cache and try once more.
+            String key = this.cacheKey(SERVICE_CACHING_KEY, iScopes, null, null);
+            removeCachedToken(key);
+            
+            try {
+                verifyTokenResponse = verifyToken(token, options);
+            } catch (ServiceUnauthorizedException e2) {
+                throw new AuthenticationException("Service unable to authorize to the token verification endpoint");
+            }
+        }
 
         if (verifyTokenResponse == null) {
             return new AllowedResponse(false);
@@ -265,13 +303,11 @@ public class Service extends Client {
      * @throws AuthenticationException if the Service should should return errorStatusCode()
      * to the requesting Client so that the Client will not retry.
      */
-    private AllowedResponse verifyToken(String token, VerificationOptions options) throws AuthenticationException {
+    private AllowedResponse verifyToken(String token, VerificationOptions options) throws AuthenticationException, ServiceUnauthorizedException {
         String accessToken = getToken(SERVICE_CACHING_KEY, iScopes, options.getNumRetries());
-
         if (Util.isEmpty(accessToken)) {
             throw new AuthenticationException("Could not get a service access token");
         }
-
         HttpPost httpPost = createTokenVerificationRequest(token, options, accessToken);
 
         return sendTokenVerificationRequest(httpPost);
@@ -287,7 +323,7 @@ public class Service extends Client {
      * @throws AuthenticationException if the Service should should return errorStatusCode()
      * to the requesting Client so that the Client will not retry.
      */
-    private AllowedResponse sendTokenVerificationRequest(HttpPost httpPost) throws AuthenticationException {
+    private AllowedResponse sendTokenVerificationRequest(HttpPost httpPost) throws AuthenticationException, ServiceUnauthorizedException {
         try (CloseableHttpClient client = httpClientWithPlanner()) {
             CloseableHttpResponse response = client.execute(httpPost);
             int statusCode = response.getStatusLine().getStatusCode();
@@ -296,8 +332,9 @@ public class Service extends Client {
 
             if (statusCode == HttpStatus.SC_OK) {
                 return new AllowedResponse(jsonResponse);
-            }
-            else if (statusCode != HttpStatus.SC_INTERNAL_SERVER_ERROR) {
+            } else if (statusCode == HttpStatus.SC_UNAUTHORIZED) {
+                throw new ServiceUnauthorizedException();
+            } else if (statusCode != HttpStatus.SC_INTERNAL_SERVER_ERROR) {
                 throw new AuthenticationException(jsonResponse.toString());
             }
         } catch (IOException e) {
@@ -357,43 +394,16 @@ public class Service extends Client {
      * @return AllowedResponse from the cache.
      */
     private AllowedResponse getTokenResponseFromCache(String cachingKey) {
-        if (cachingKey != null) {
-            AllowedResponse cachedResponse = cTokenResponseCache.getIfPresent(cachingKey);
+        AllowedResponse cachedResponse = cTokenResponseCache.getIfPresent(cachingKey);
 
-            if (isExpired(cachedResponse)) {
-                removeCachedTokenResponse(cachingKey);
-            }
-            else {
+        if (cachedResponse != null) {
+            if (!cachedResponse.isExpired()) {
                 return cachedResponse;
             }
+            //Expired, so remove it from cache and return null
+            removeCachedTokenResponse(cachingKey);
         }
-
         return null;
-    }
-
-    /**
-     * Checks if the response expiry time has passsed.
-     * If the response doesn't have an expiry time, it's considered not expired.
-     *
-     * @param allowedResponse The token verification response.
-     *
-     * @return boolean if the response has expired.
-     */
-    private boolean isExpired(AllowedResponse allowedResponse) {
-        if (allowedResponse != null) {
-            String expires = allowedResponse.getExp();
-
-            if (expires != null) {
-                OffsetDateTime timeExpires = OffsetDateTime.parse(expires);
-                OffsetDateTime timeNow = OffsetDateTime.now(timeExpires.getOffset());
-
-                return timeNow.isAfter(timeExpires);
-            }
-
-            return false;
-        }
-
-        return true;
     }
 
     /**
@@ -418,4 +428,7 @@ public class Service extends Client {
             cTokenResponseCache.invalidate(cachingKey);
         }
     }
+}
+
+class ServiceUnauthorizedException extends Exception {
 }
