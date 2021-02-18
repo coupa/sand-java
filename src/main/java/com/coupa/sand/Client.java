@@ -34,6 +34,11 @@ public class Client {
     protected static final String DEFAULT_TOKEN_PATH = "/oauth2/token";
     protected static final int DEFAULT_RETRY_COUNT = 5;
 
+    protected static final int TOKEN_CACHE_DEFAULT_MAX_SIZE = 1000;
+    //Expires a token 5 seconds earlier (compare to 3599) to avoid expired token request.
+    protected static final long TOKEN_CACHE_DEFAULT_EXPIRY_IN_SECS = 3594L;
+
+
     String iClientId = null;
     String iClientSecret = null;
     String iTokenSite = null;
@@ -45,14 +50,36 @@ public class Client {
      * Cache to avoid repeated calls to SAND authentication server.
      * Tokens are cached for 1 hour.
      */
-    private static final Cache<String, TokenResponse> cTokenCache =
+    private static Cache<String, TokenResponse> cTokenCache =
             CacheBuilder
             .newBuilder()
             .concurrencyLevel(4)
-            .maximumSize(1000)
-            .expireAfterWrite(1L, TimeUnit.HOURS)
+            .maximumSize(TOKEN_CACHE_DEFAULT_MAX_SIZE)
+            .expireAfterWrite(TOKEN_CACHE_DEFAULT_EXPIRY_IN_SECS, TimeUnit.SECONDS)
             .build();
 
+    /**
+     * This rebuilds the service cache of token responses with the specified expiry time and max size.
+     * Use this method early at the beginning of your app to set custom expiry time and max size for the cache.
+     * @param secs Cache expiry time in seconds. Default is 3594L.
+     * @param maxSize Maximum size of the cache. Default is 1000.
+     */
+    public static void buildTokenCacheWithExpiryAndSize(long secs, int maxSize) {
+        if (maxSize < 1) {
+            maxSize = TOKEN_CACHE_DEFAULT_MAX_SIZE;
+        }
+        if (secs < 1) {
+            secs = TOKEN_CACHE_DEFAULT_EXPIRY_IN_SECS;
+        }
+        cTokenCache = CacheBuilder
+            .newBuilder()
+            .concurrencyLevel(4)
+            .maximumSize(maxSize)
+            .expireAfterWrite(secs, TimeUnit.SECONDS)
+            .build();
+    }
+
+    
     /**
      * Constructor that sets the default tokenPath
      *
@@ -409,7 +436,7 @@ public class Client {
         }
     }
 
-    private TokenResponse getFromCache(String cachingKey) {
+    protected TokenResponse getFromCache(String cachingKey) {
         TokenResponse item = null;
 
         if (!Util.isEmpty(cachingKey)) {
@@ -429,7 +456,7 @@ public class Client {
      * @param cachingKey The key to use for caching.
      * @param token The token to cache.
      */
-    private void cacheToken(String cachingKey, TokenResponse token) {
+    protected void cacheToken(String cachingKey, TokenResponse token) {
         if (!Util.isEmpty(cachingKey) && token != null) {
             cTokenCache.put(cachingKey, token);
         }
@@ -440,7 +467,7 @@ public class Client {
      *
      * @param cachingKey The key to remove from the cache.
      */
-    private void removeCachedToken(String cachingKey) {
+    protected void removeCachedToken(String cachingKey) {
         if (!Util.isEmpty(cachingKey)) {
             cTokenCache.invalidate(cachingKey);
         }

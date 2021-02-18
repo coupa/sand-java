@@ -41,14 +41,7 @@ public class TokenResponse {
       scopes = scope.split(" ");
 
       Object expire = mapResponse.get(EXPIRES_IN);
-      if (expire instanceof Long) {
-          expiresIn = (long) expire;
-      } else if (expire instanceof String) {
-          expiresIn = Long.parseLong((String) expire);
-      } else {
-          expiresIn = DEFAULT_TOKEN_EXPIRES_IN_SECONDS;
-      }
-      expiresAt = System.currentTimeMillis() + expiresIn * 1_000L;
+      setExpiresAt(System.currentTimeMillis(), expire);
   }
 
   public boolean isExpired() {
@@ -75,15 +68,26 @@ public class TokenResponse {
       return expiresIn;
   }
 
-  public void setExpiresIn(long expiresIn) {
-      this.expiresIn = expiresIn;
-  }
-
   public String getTokenType() {
       return tokenType;
   }
 
   public void setTokenType(String tokenType) {
       this.tokenType = tokenType;
+  }
+  
+  public void setExpiresAt(long currentTime, Object expire) {
+      if (expire instanceof Long) {
+          expiresIn = (long) expire;
+      } else if (expire instanceof String) {
+          expiresIn = Long.parseLong((String) expire);
+      } else {
+          expiresIn = DEFAULT_TOKEN_EXPIRES_IN_SECONDS;
+      }
+      expiresAt = currentTime + expiresIn * 1_000L;
+  }
+  
+  public long getExpiresAt() {
+      return expiresAt;
   }
 }
