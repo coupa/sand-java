@@ -129,7 +129,7 @@ public class Service extends Client {
      */
     public Service(String clientId, String secret, String tokenSite, String tokenPath, String resource, String tokenVerifyPath, String[] scopes) {
         super(clientId, secret, tokenSite, tokenPath);
-        if (Util.isEmpty(resource, tokenVerifyPath)) {
+        if (Util.hasEmpty(resource, tokenVerifyPath)) {
           throw new IllegalArgumentException("Service resource and token verification path are required");
         }
         iResource = resource;
@@ -212,7 +212,7 @@ public class Service extends Client {
 
         String token = extractToken(request);
 
-        if (Util.isEmpty(token)) {
+        if (Util.hasEmpty(token)) {
             throw new AuthenticationException("Failed to extract the token from the request");
         }
 
@@ -305,7 +305,7 @@ public class Service extends Client {
      */
     private AllowedResponse verifyToken(String token, VerificationOptions options) throws AuthenticationException, ServiceUnauthorizedException {
         String accessToken = getToken(SERVICE_CACHING_KEY, iScopes, options.getNumRetries());
-        if (Util.isEmpty(accessToken)) {
+        if (Util.hasEmpty(accessToken)) {
             throw new AuthenticationException("Could not get a service access token");
         }
         HttpPost httpPost = createTokenVerificationRequest(token, options, accessToken);

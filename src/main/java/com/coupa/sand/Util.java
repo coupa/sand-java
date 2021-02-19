@@ -10,10 +10,10 @@ public class Util {
 	/**
 	 * Checks if any of the string parameter is empty (null or "")
 	 * @param strs
-	 * @return true if any string is empty.
+	 * @return true if any string is empty or null.
 	 */
-	public static boolean isEmpty(String... strs) {
-		if (strs.length == 0) {
+	public static boolean hasEmpty(String... strs) {
+		if (strs == null || strs.length == 0) {
 			return true;
 		}
 		for (String str : strs) {

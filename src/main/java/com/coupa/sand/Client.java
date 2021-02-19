@@ -100,7 +100,7 @@ public class Client {
      * @param tokenPath The endpoint on the SAND server to request an oauth token.
      */
     public Client(String clientId, String clientSecret, String tokenSite, String tokenPath) {
-        if (Util.isEmpty(clientId, clientSecret, tokenSite, tokenPath)) {
+        if (Util.hasEmpty(clientId, clientSecret, tokenSite, tokenPath)) {
             throw new IllegalArgumentException("Client credentials and token site and path are all required");
         }
         iClientId = clientId;
@@ -159,7 +159,7 @@ public class Client {
             int retries,
             Function<String, HttpResponse> requestFunction) {
 
-        if (requestFunction == null || Util.isEmpty(keyForCaching)) {
+        if (requestFunction == null || Util.hasEmpty(keyForCaching)) {
             return null;
         }
 
@@ -252,7 +252,7 @@ public class Client {
             int retries,
             Function<String, GenericResponse<R>> requestFunction) {
     	
-        if (requestFunction == null || Util.isEmpty(keyForCaching)) {
+        if (requestFunction == null || Util.hasEmpty(keyForCaching)) {
             return null;
         }
 
@@ -282,7 +282,7 @@ public class Client {
             token = getToken(keyForCaching, scopes, retries);
 
             if (token != null) {
-            	response = requestFunction.apply(token);
+                response = requestFunction.apply(token);
 
                 if (response != null && response.getResponse() != null) {
                     statusCode = response.getStatusCode();
@@ -308,7 +308,10 @@ public class Client {
      */
     public String getToken(String keyForCaching, String[] scopes, int retries) {
         TokenResponse token = getOAuthToken(keyForCaching, scopes, retries);
-        return token.getToken();
+        if (token != null) {
+            return token.getToken();
+        }
+        return null;
     }
 
     /**
@@ -391,6 +394,7 @@ public class Client {
                     LOGGER.error("Could not parse the oauth token response", e);
                 }
             } else {
+                LOGGER.error("Error getting Sand token {}: {}", statusCode, tokenHTTPResp.getContent());
                 requestRetry++;
             }
         } while (statusCode != HttpStatus.SC_OK);
@@ -439,7 +443,7 @@ public class Client {
     protected TokenResponse getFromCache(String cachingKey) {
         TokenResponse item = null;
 
-        if (!Util.isEmpty(cachingKey)) {
+        if (!Util.hasEmpty(cachingKey)) {
             item = cTokenCache.getIfPresent(cachingKey);
             if (item != null && item.isExpired()) {
                 removeCachedToken(cachingKey);
@@ -457,7 +461,7 @@ public class Client {
      * @param token The token to cache.
      */
     protected void cacheToken(String cachingKey, TokenResponse token) {
-        if (!Util.isEmpty(cachingKey) && token != null) {
+        if (!Util.hasEmpty(cachingKey) && token != null) {
             cTokenCache.put(cachingKey, token);
         }
     }
@@ -468,7 +472,7 @@ public class Client {
      * @param cachingKey The key to remove from the cache.
      */
     protected void removeCachedToken(String cachingKey) {
-        if (!Util.isEmpty(cachingKey)) {
+        if (!Util.hasEmpty(cachingKey)) {
             cTokenCache.invalidate(cachingKey);
         }
     }
@@ -497,12 +501,12 @@ public class Client {
             sb.append(String.join("_", scopes));
         }
 
-        if (!Util.isEmpty(resource)) {
+        if (!Util.hasEmpty(resource)) {
             sb.append("/");
             sb.append(resource);
         }
 
-        if (!Util.isEmpty(action)) {
+        if (!Util.hasEmpty(action)) {
             sb.append("/");
             sb.append(action);
         }
