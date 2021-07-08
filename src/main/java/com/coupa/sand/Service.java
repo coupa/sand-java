@@ -6,6 +6,7 @@ import com.google.gson.Gson;
 import net.minidev.json.JSONObject;
 import org.apache.http.*;
 import org.apache.http.auth.AuthenticationException;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
@@ -41,6 +42,9 @@ public class Service extends Client {
     private static final String TOKEN_VERIFICATION_FIELD_RESOURCE = "resource";
     private static final String TOKEN_VERIFICATION_FIELD_ACTION = "action";
     private static final String TOKEN_VERIFICATION_FIELD_CONTEXT = "context";
+    
+    private static final int DEFAULT_HTTP_CONNECT_TIMEOUT_MS = 1000;
+    private static final int DEFAULT_HTTP_SOCKET_TIMEOUT_MS = 5000;
 
     private static final int SERVICE_CACHE_DEFAULT_MAX_SIZE = 100000;
     private static final long SERVICE_CACHE_DEFAULT_EXPIRY_IN_SECS = 3599L;
@@ -49,6 +53,21 @@ public class Service extends Client {
     Map<String, Object> iContext = DEFAULT_CONTEXT;
     String iTokenVerifyPath = DEFAULT_TOKEN_VERIFY_PATH;
     String[] iScopes = DEFAULT_SERVICE_SCOPES;
+
+    /*
+     * Secondary Token Cache
+     */
+    private static SecondaryCache<String, AllowedResponse> allowedResponseSecondaryCache;
+    private static final String SECONDARY_CACHE_PROVIDER_NAME = "org.redisson.api.RedissonClient";
+    
+    static {
+    	try {
+    		Class.forName(SECONDARY_CACHE_PROVIDER_NAME, false, Client.class.getClassLoader());
+    		allowedResponseSecondaryCache = new SecondaryCache<String, AllowedResponse>("sand-cache-authorizations");
+    	} catch (ClassNotFoundException e) {
+    		LOGGER.warn("Secondary Cache Provider {} Not Found", SECONDARY_CACHE_PROVIDER_NAME);
+    	}
+    }
 
     /**
      * Cache to avoid repeated calls to SAND server.
@@ -351,7 +370,13 @@ public class Service extends Client {
      * @return a CloseableHttpClient.
      */
     private static CloseableHttpClient httpClientWithPlanner() {
-        return HttpClients.custom().useSystemProperties().build();
+    	
+    	RequestConfig requestConfig = RequestConfig.custom()
+    		.setConnectTimeout(DEFAULT_HTTP_CONNECT_TIMEOUT_MS)
+    		.setSocketTimeout(DEFAULT_HTTP_SOCKET_TIMEOUT_MS)
+    		.build();
+    	
+        return HttpClients.custom().useSystemProperties().setDefaultRequestConfig(requestConfig).build();
     }
 
     /**
@@ -394,7 +419,7 @@ public class Service extends Client {
      * @return AllowedResponse from the cache.
      */
     private AllowedResponse getTokenResponseFromCache(String cachingKey) {
-        AllowedResponse cachedResponse = cTokenResponseCache.getIfPresent(cachingKey);
+        AllowedResponse cachedResponse = allowedResponseSecondaryCache == null ? cTokenResponseCache.getIfPresent(cachingKey) : allowedResponseSecondaryCache.getValue(cachingKey);
 
         if (cachedResponse != null) {
             if (!cachedResponse.isExpired()) {
@@ -414,7 +439,11 @@ public class Service extends Client {
      */
     private void cacheTokenResponse(String cachingKey, AllowedResponse allowedResponse) {
         if (cachingKey != null) {
-            cTokenResponseCache.put(cachingKey, allowedResponse);
+        	if (allowedResponseSecondaryCache != null) {
+        		allowedResponseSecondaryCache.putValue(cachingKey, allowedResponse);
+        	} else {
+                cTokenResponseCache.put(cachingKey, allowedResponse);
+        	}
         }
     }
 
@@ -425,7 +454,11 @@ public class Service extends Client {
      */
     private void removeCachedTokenResponse(String cachingKey) {
         if (cachingKey != null) {
-            cTokenResponseCache.invalidate(cachingKey);
+        	if (allowedResponseSecondaryCache != null) {
+        		allowedResponseSecondaryCache.removeValue(cachingKey);
+        	} else {
+        		cTokenResponseCache.invalidate(cachingKey);
+        	}
         }
     }
 }

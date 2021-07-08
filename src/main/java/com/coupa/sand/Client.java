@@ -1,24 +1,29 @@
 package com.coupa.sand;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
-import com.nimbusds.oauth2.sdk.*;
-import com.nimbusds.oauth2.sdk.auth.ClientSecretBasic;
-import com.nimbusds.oauth2.sdk.auth.Secret;
-import com.nimbusds.oauth2.sdk.http.HTTPResponse;
-import com.nimbusds.oauth2.sdk.id.ClientID;
-import net.minidev.json.JSONObject;
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import com.nimbusds.oauth2.sdk.ClientCredentialsGrant;
+import com.nimbusds.oauth2.sdk.ParseException;
+import com.nimbusds.oauth2.sdk.Scope;
+import com.nimbusds.oauth2.sdk.SerializeException;
+import com.nimbusds.oauth2.sdk.TokenRequest;
+import com.nimbusds.oauth2.sdk.auth.ClientSecretBasic;
+import com.nimbusds.oauth2.sdk.auth.Secret;
+import com.nimbusds.oauth2.sdk.http.HTTPResponse;
+import com.nimbusds.oauth2.sdk.id.ClientID;
+
+import net.minidev.json.JSONObject;
 
 /**
  *  This class creates a Client for authentication with a SAND server,
@@ -46,6 +51,22 @@ public class Client {
     String iCacheRoot = DEFAULT_CACHE_ROOT;
     String iCacheType = DEFAULT_CLIENT_CACHE_TYPE;
 
+    /*
+     * Secondary Token Cache
+     */
+    private static SecondaryCache<String, TokenResponse> tokenSecondaryCache;
+    private static final String SECONDARY_CACHE_PROVIDER_NAME = "org.redisson.api.RedissonClient";
+    
+    static {
+    	try {
+    		Class.forName(SECONDARY_CACHE_PROVIDER_NAME, false, Client.class.getClassLoader());
+    		tokenSecondaryCache = new SecondaryCache<String, TokenResponse>("sand-cache-tokens");
+    	} catch (ClassNotFoundException e) {
+    		LOGGER.warn("Secondary Cache Provider {} Not Found", SECONDARY_CACHE_PROVIDER_NAME);
+    	}
+    }
+    
+    
     /**
      * Cache to avoid repeated calls to SAND authentication server.
      * Tokens are cached for 1 hour.
@@ -444,7 +465,7 @@ public class Client {
         TokenResponse item = null;
 
         if (!Util.hasEmpty(cachingKey)) {
-            item = cTokenCache.getIfPresent(cachingKey);
+        	item = tokenSecondaryCache == null ? cTokenCache.getIfPresent(cachingKey) : tokenSecondaryCache.getValue(cachingKey);
             if (item != null && item.isExpired()) {
                 removeCachedToken(cachingKey);
                 item = null;
@@ -462,7 +483,11 @@ public class Client {
      */
     protected void cacheToken(String cachingKey, TokenResponse token) {
         if (!Util.hasEmpty(cachingKey) && token != null) {
-            cTokenCache.put(cachingKey, token);
+        	if (tokenSecondaryCache != null) {
+        		tokenSecondaryCache.putValue(cachingKey, token);
+        	}  else {
+                cTokenCache.put(cachingKey, token);
+        	}
         }
     }
 
@@ -473,7 +498,11 @@ public class Client {
      */
     protected void removeCachedToken(String cachingKey) {
         if (!Util.hasEmpty(cachingKey)) {
-            cTokenCache.invalidate(cachingKey);
+        	if (tokenSecondaryCache != null) {
+        		tokenSecondaryCache.removeValue(cachingKey);
+        	} else {
+                cTokenCache.invalidate(cachingKey);
+        	}
         }
     }
 
@@ -491,6 +520,8 @@ public class Client {
     protected String cacheKey(String cachingKey, String[] scopes, String resource, String action) {
         StringBuilder sb = new StringBuilder();
         sb.append(iCacheRoot);
+        sb.append("/");
+        sb.append(iClientId);
         sb.append("/");
         sb.append(iCacheType);
         sb.append("/");

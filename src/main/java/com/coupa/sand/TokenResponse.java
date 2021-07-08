@@ -1,5 +1,6 @@
 package com.coupa.sand;
 
+import java.io.Serializable;
 import java.util.Map;
 
 /**
@@ -7,7 +8,10 @@ import java.util.Map;
  *
  * @author John Wu
  */
-public class TokenResponse {
+public class TokenResponse implements Serializable {
+	
+	private static final long serialVersionUID = -742168469210621455L;
+	
   private static final String ACCESS_TOKEN = "access_token";
   private static final String EXPIRES_IN = "expires_in";
   private static final String SCOPE = "scope";
@@ -38,7 +42,7 @@ public class TokenResponse {
       tokenType = (String) mapResponse.get(TOKEN_TYPE);
 
       String scope = (String) mapResponse.get(SCOPE);
-      scopes = scope.split(" ");
+      scopes = scope != null ? scope.split(" ") : new String[] {};
 
       Object expire = mapResponse.get(EXPIRES_IN);
       setExpiresAt(System.currentTimeMillis(), expire);

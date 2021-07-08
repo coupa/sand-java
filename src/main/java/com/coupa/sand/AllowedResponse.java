@@ -1,5 +1,6 @@
 package com.coupa.sand;
 
+import java.io.Serializable;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Map;
@@ -10,8 +11,11 @@ import java.util.Map;
  *
  * @author Mattias Kjetselberg
  */
-public class AllowedResponse {
-    private static final String RESPONSE_FIELD_ALLOWED = "allowed";
+public class AllowedResponse implements Serializable {
+	
+    private static final long serialVersionUID = 1262008904200914496L;
+    
+	private static final String RESPONSE_FIELD_ALLOWED = "allowed";
     private static final String RESPONSE_FIELD_SUB = "sub";
     private static final String RESPONSE_FIELD_SCOPES = "scopes";
     private static final String RESPONSE_FIELD_ISS = "iss";
